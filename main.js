@@ -1,3 +1,6 @@
+// this script gets senate voting data
+// for this project, all votes for the current congress up to April 7, 2017 were used
+
 var request = require('request');
 var fs = require("fs");
 
