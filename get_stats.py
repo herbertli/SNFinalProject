@@ -2,6 +2,7 @@ import json
 
 INFINITY = 1e9
 
+
 def convert_votes_to_adjacency(data):
     adj_matrix = {}
     for name in data:
@@ -80,31 +81,55 @@ def floyd_warshall(adj_matrix, threshold):
     return distances
 
 
+def get_components(adj_matrix, threshold):
+
+    visited = []
+    components = 0
+
+    for name in adj_matrix:
+        if name not in visited:
+            components += 1
+            visited = dfs(visited, adj_matrix, threshold, name)
+
+    return components
+
+
+def dfs(visited, adj_matrix, threshold, name):
+    visited.append(name)
+    for other_name in adj_matrix[name]:
+        if adj_matrix[name][other_name] >= threshold and other_name not in visited:
+            visited = dfs(visited, adj_matrix, threshold, other_name)
+    return visited
+
+
 def get_stats(adj_matrix, threshold):
     distances = floyd_warshall(adj_matrix, threshold)
     diameter = get_diameter(distances)
     average = get_average_distance(distances)
+    components = get_components(adj_matrix, threshold)
     print("Threshold:", threshold)
     print("Average distance is", average)
     print("Diameter of graph is", diameter)
+    print("Number of components is", components)
+    print()
     return True
 
 
 if __name__ == "__main__":
 
     filename = input("(v)oting data, or (m)oney data: ")
-    # threshold = float(input("Enter threshold (enter 50 for 50%): "))
+    threshold = float(input("Enter threshold (enter 50 for 50%): "))
     if filename == "v":
         with open("vdata.json", "r") as f:
             data = json.load(f)
             data = convert_votes_to_adjacency(data)
-            for i in range(50, 101, 10):
-                get_stats(data, i / 100)
+            for p in range(1, 101, 1):
+                get_stats(data, p / 100)
     elif filename == "m":
         with open("mdata.json", "r") as f:
             data = json.load(f)
             data = convert_money_to_adjacency(data)
-            for i in range(50, 101, 10):
-                get_stats(data, i / 100)
+            for p in range(1, 101, 1):
+                get_stats(data, p / 100)
     else:
         print("Invalid option (case sensitive)")
