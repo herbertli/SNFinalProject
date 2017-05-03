@@ -4,6 +4,13 @@ INFINITY = 1e9
 
 
 def convert_votes_to_adjacency(data):
+    """
+    Converts voting data into an adjacency matrix
+    :param data: initial vote data, see vdata.json
+    :type data: Dictionary
+    :return: adjacency matrix, key: senator, value: dictionary showing connections to other senators
+    :rtype: Dictionary
+    """
     adj_matrix = {}
     for name in data:
         adj_matrix[name] = {}
@@ -13,6 +20,13 @@ def convert_votes_to_adjacency(data):
 
 
 def convert_money_to_adjacency(data):
+    """
+    Converts campaign donation data into an adjacency matrix
+    :param data: initial campaign donation data, see mdata.json
+    :type data: Dictionary
+    :return: adjacency matrix, key: senator, value: dictionary showing connections to other senators
+    :rtype: Dictionary
+    """
     new_data = {}
 
     industries = data.keys()
@@ -36,6 +50,13 @@ def convert_money_to_adjacency(data):
 
 
 def get_diameter(distances):
+    """
+    Get diameter of a network/graph
+    :param distances: distances matrix, distance[i][j] is the distance from senator i to senator j
+    :type distances: Dictionary
+    :return: diameter
+    :rtype: int
+    """
     max_dist = 0
     for i in distances:
         for j in distances:
@@ -45,6 +66,13 @@ def get_diameter(distances):
 
 
 def get_average_distance(distances):
+    """
+    Get average distance of a network/graph
+    :param distances: distances matrix, distance[i][j] is the distance from senator i to senator j
+    :type distances: Dictionary
+    :return: average distance
+    :rtype: int
+    """
     total = 0
     counter = 0
     for i in distances:
@@ -56,6 +84,15 @@ def get_average_distance(distances):
 
 
 def floyd_warshall(adj_matrix, threshold):
+    """
+    Finds all pairs shortest path
+    :param adj_matrix: adjacency matrix
+    :type adj_matrix: Dictionary
+    :param threshold: percentage cutoff
+    :type threshold: float
+    :return: distances matrix
+    :rtype: Dictionary
+    """
     senators = list(adj_matrix.keys())
     distances = {}
 
@@ -82,7 +119,15 @@ def floyd_warshall(adj_matrix, threshold):
 
 
 def get_components(adj_matrix, threshold):
-
+    """
+    Count components of a graph
+    :param adj_matrix: adjacency matrix
+    :type adj_matrix: Dictionary
+    :param threshold: percentage threshold
+    :type threshold: float
+    :return: number of components
+    :rtype: int
+    """
     visited = []
     components = 0
 
@@ -95,6 +140,19 @@ def get_components(adj_matrix, threshold):
 
 
 def dfs(visited, adj_matrix, threshold, name):
+    """
+    Depth first search
+    :param visited: list containing visited nodes
+    :type visited: List
+    :param adj_matrix: adjacency matrix
+    :type adj_matrix: Dictionary
+    :param threshold: percentage threshold
+    :type threshold: float
+    :param name: current node
+    :type name: String
+    :return: new visited list
+    :rtype: List
+    """
     visited.append(name)
     for other_name in adj_matrix[name]:
         if adj_matrix[name][other_name] >= threshold and other_name not in visited:
@@ -118,18 +176,25 @@ def get_stats(adj_matrix, threshold):
 if __name__ == "__main__":
 
     filename = input("(v)oting data, or (m)oney data: ")
-    threshold = float(input("Enter threshold (enter 50 for 50%): "))
     if filename == "v":
         with open("vdata.json", "r") as f:
             data = json.load(f)
             data = convert_votes_to_adjacency(data)
-            for p in range(1, 101, 1):
-                get_stats(data, p / 100)
+            while True:
+                threshold = float(input("Enter threshold (enter 50 for 50%), or (q)uit: "))
+                if threshold == "q":
+                    break
+                else:
+                    get_stats(data, p / 100)
     elif filename == "m":
         with open("mdata.json", "r") as f:
             data = json.load(f)
             data = convert_money_to_adjacency(data)
-            for p in range(1, 101, 1):
-                get_stats(data, p / 100)
+            while True:
+                threshold = float(input("Enter threshold (enter 50 for 50%), or (q)uit: "))
+                if threshold == "q":
+                    break
+                else:
+                    get_stats(data, p / 100)
     else:
         print("Invalid option (case sensitive)")
