@@ -181,20 +181,20 @@ if __name__ == "__main__":
             data = json.load(f)
             data = convert_votes_to_adjacency(data)
             while True:
-                threshold = float(input("Enter threshold (enter 50 for 50%), or (q)uit: "))
+                threshold = input("Enter threshold (enter 50 for 50%), or (q)uit: ")
                 if threshold == "q":
                     break
                 else:
-                    get_stats(data, p / 100)
+                    get_stats(data, float(threshold) / 100)
     elif filename == "m":
         with open("mdata.json", "r") as f:
             data = json.load(f)
             data = convert_money_to_adjacency(data)
             while True:
-                threshold = float(input("Enter threshold (enter 50 for 50%), or (q)uit: "))
+                threshold = input("Enter threshold (enter 50 for 50%), or (q)uit: ")
                 if threshold == "q":
                     break
                 else:
-                    get_stats(data, p / 100)
+                    get_stats(data, float(threshold) / 100)
     else:
         print("Invalid option (case sensitive)")
