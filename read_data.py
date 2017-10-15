@@ -1,190 +1,159 @@
 import json
-import sys
+import glob
+import os
+import matplotlib.pyplot as plt
+import numpy as np
+import networkx as nx
+from functools import reduce
+
+
+class Senator:
+
+    def __init__(self, senator_dict=None):
+        self.yea_votes = []
+        self.no_votes = []
+        self.industries = {}
+        self.has_outliers = True
+        if senator_dict:
+            self.display_name = senator_dict['display_name']
+            self.first_name = senator_dict['first_name']
+            self.last_name = senator_dict['last_name']
+            self.id = senator_dict['id']
+            self.party = senator_dict['party']
+            self.state = senator_dict['state']
+
+    def vote_similarity(self, other):
+        same = 0
+        for vote in self.yea_votes:
+            if vote in other.yea_votes:
+                same += 1
+        for vote in self.no_votes:
+            if vote in other.no_votes:
+                same += 1
+
+        return same / (len(self.yea_votes) + len(self.no_votes) + len(other.yea_votes) + len(other.no_votes) - same)
+        # return same / (len(self.yea_votes) + len(self.no_votes)) ** .5 / (len(other.yea_votes) + len(other.no_votes)) ** .5
+
+    def money_similarity(self, other):
+        if self.has_outliers:
+            self.remove_outliers()
+        if other.has_outliers:
+            other.remove_outliers()
+        same = 0
+        for industry_id in self.industries.keys():
+            if industry_id in other.industries.keys():
+                same += 1
+        return same / (len(self.industries.keys()) + len(other.industries.keys()) - same)
+        # return same / len(self.industries.keys()) ** .5 / len(other.industries.keys()) ** .5
+
+    def add_yea(self, vote_id):
+        self.yea_votes.append(vote_id)
+
+    def add_no(self, vote_id):
+        self.no_votes.append(vote_id)
+
+    def add_industry(self, industry_id, amount):
+        if industry_id not in self.industries.keys():
+            self.industries[industry_id] = amount
+        else:
+            self.industries[industry_id] += amount
+
+    def remove_outliers(self, m = 2):
+        data = list(self.industries.values())
+        med = np.median(data)
+        d = np.abs(data - med)
+        mdev = np.median(d)
+        removed = 0
+        for k in self.industries.keys():
+            if mdev:
+                s = self.industries[k] / mdev
+            else:
+                s = 0
+            if s > m and self.industries[k] < med:
+                self.industries.pop(k, None)
+                removed += 1
+        self.has_outliers = False
 
 
 def read_vote_data():
     """
     Reads and parses all files under the vote_data directory
-    :return: Adjacency Matrix
-    :rtype: Dictionary
-            key: senator name (a)
-            value: {} =>    key: senator name (b)
-                            value: number times Senator a voted the same way as Senator b
+    :return: List of Senator objects
+    :rtype: List
     """
     senators_dict = {}
-
-    democrats = []
-    republicans = []
-    third_party = []
 
     for i in range(1, 112):
         with open("vote_data/" + str(i) + ".json", "r") as f:
             data = json.load(f)
 
-            yes_votes = []
-            no_votes = []
+            yes_votes = data['votes']['Yea']
+            no_votes = data['votes']['Nay']
+            vote_id = data['vote_id']
 
-            for s in data['votes']['Yea']:
-                name = s['last_name']
-                yes_votes.append(name)
-                if s['party'] == "D" and name not in democrats:
-                    democrats.append(name)
-                elif s['party'] == "R" and name not in republicans:
-                    republicans.append(name)
-                elif s['party'] == "I" and name not in third_party:
-                    third_party.append(name)
+            for senator in yes_votes:
+                if senator['id'] not in senators_dict:
+                    senators_dict[senator['id']] = Senator(senator)
+                senators_dict[senator['id']].add_yea(vote_id)
 
-            for s in data['votes']['Nay']:
-                name = s['last_name']
-                no_votes.append(name)
-                if s['party'] == "D" and name not in democrats:
-                    democrats.append(name)
-                elif s['party'] == "R" and name not in republicans:
-                    republicans.append(name)
-                elif s['party'] == "I" and name not in third_party:
-                    third_party.append(name)
-
-            for name in yes_votes:
-                if name in senators_dict:
-                    for other_name in yes_votes:
-                        if other_name in senators_dict[name]:
-                            senators_dict[name][other_name] += 1
-                        else:
-                            senators_dict[name][other_name] = 1
-                else:
-                    senators_dict[name] = {}
-                    for other_name in yes_votes:
-                        if other_name in senators_dict[name]:
-                            senators_dict[name][other_name] += 1
-                        else:
-                            senators_dict[name][other_name] = 1
-
-            for name in no_votes:
-                if name in senators_dict:
-                    for other_name in no_votes:
-                        if other_name in senators_dict[name]:
-                            senators_dict[name][other_name] += 1
-                        else:
-                            senators_dict[name][other_name] = 1
-                else:
-                    senators_dict[name] = {}
-                    for other_name in no_votes:
-                        if other_name in senators_dict[name]:
-                            senators_dict[name][other_name] += 1
-                        else:
-                            senators_dict[name][other_name] = 1
-
-    with open("senators.json", "w") as f:
-        senators = {}
-        senators["democrats"] = democrats
-        senators["republicans"] = republicans
-        senators["other"] = third_party
-        f.write(json.JSONEncoder().encode(senators))
-
-    with open("vdata.json", "w") as f:
-        f.write(json.JSONEncoder().encode(senators_dict))
-
-    return senators_dict
+            for senator in no_votes:
+                if senator['id'] not in senators_dict:
+                    senators_dict[senator['id']] = Senator(senator)
+                senators_dict[senator['id']].add_no(vote_id)
+    return list(senators_dict.values())
 
 
 def read_money_data():
     """
     Reads and parses all files under the money_data directory
-    :return: Industries and their respective contributions to a particular senator
-    :rtype: Dictionary
-            key: Industry name e.g. Lawyers, Retired, etc.
-            value: {} =>    key: senator name
-                            value: amount senator received from industry
+    :return: List of Industry objects
+    :rtype: List
     """
-    industry_dict = {}
+    senators_dict = {}
 
-    with open("senators.json") as f:
-        senator_names_dict = json.load(f)
+    for filename in glob.glob(os.path.join("money_data/", "*.json")):
+        with open(filename) as f:
+            data = json.load(f)
+            for record in data['records']:
+                if 'memname' not in record.keys():
+                    continue
+                if record['memname'] not in senators_dict:
+                    senators_dict[record['memname']] = Senator()
+                    senators_dict[record['memname']].display_name = record['memname']
+                senators_dict[record['memname']].add_industry(record['indus'], float(record['totals']))
 
-    senator_names = []
-    for key in senator_names_dict:
-        for name in senator_names_dict[key]:
-            senator_names.append(name)
-
-    for name in senator_names:
-        cleaned_up = name.split(" ")[-1]
-        try:
-            with open("money_data/" + cleaned_up + ".json", "r") as f:
-                data = json.load(f)
-                records = data['records']
-                total = 0
-                counter = 0
-                for r in records:
-                    counter += 1
-                    total_money = r["totals"]
-                    total += int(total_money)
-                average = total / counter
-                for r in records:
-                    industry_name = r["indus"]
-                    total_money = r["totals"]
-                    if int(total_money) >= average:
-                        if industry_name not in industry_dict:
-                            industry_dict[industry_name] = {}
-                        industry_dict[industry_name][name] = int(total_money)
-
-                print("Senator", name, "received", "$" + str(total),
-                      "in donations, with an average donation of", "$" + str(average))
-        except IOError:
-            print("Error occurred for Senator", name)
-
-    with open("mdata.json", "w") as f:
-        f.write(json.JSONEncoder().encode(industry_dict))
-
-    return industry_dict
+    return list(senators_dict.values())
 
 
 def convert_votes_to_graph():
     """
     Reads voting data and returns a graph representation of the data (nodes and edges/links)
-    :return: Graph
+    :return: d3-compatible dictionary
     :rtype: Dictionary
-            keys: "nodes" and "links" in the graph
-            node: keys "name", "group"
-            links: keys "source", "target", "value" (value is the percentage source votes the same as target)
     """
+    senators = read_vote_data()
 
-    with open("vdata.json") as f:
-        senators_data = json.load(f)
+    party_map = {
+        'R': 2,
+        'D': 1,
+        'I': 3
+    }
 
-    with open("senators.json") as f:
-        senators = json.load(f)
+    G = nx.Graph()
+    for i in range(len(senators)):
+        G.add_node(i, name=senators[i].display_name, group=party_map[senators[i].party])
 
-    votes_json = {}
-    senators_map = {}
-    votes_json["nodes"] = []
-    votes_json["links"] = []
+    for i in range(len(senators)):
+        for j in range(i + 1, len(senators)):
+            sim = senators[i].vote_similarity(senators[j])
+            G.add_edge(i, j, value=min(sim, 1))
 
-    senators_list = list(senators_data.keys())
-    for i in range(len(senators_list)):
-        senators_map[senators_list[i]] = i
+    assert len(G.nodes) == len(senators)
+    for x, y in G.edges:
+        assert x in G.nodes
+        assert y in G.nodes
 
-    for name in senators_list:
-        node_dict = {}
-        node_dict["name"] = name
-        if name in senators["democrats"]:
-            node_dict["group"] = 1
-        elif name in senators["republicans"]:
-            node_dict["group"] = 2
-        else:
-            node_dict["group"] = 3
-
-        votes_json["nodes"].append(node_dict)
-
-        for other_senator in senators_data[name].keys():
-            link_dict = {}
-            link_dict["source"] = senators_map[name]
-            link_dict["target"] = senators_map[other_senator]
-            link_dict["value"] = float(senators_data[name][other_senator]) / float(senators_data[name][name])
-            votes_json["links"].append(link_dict)
-
-    with open("vgraph.json", "w") as f:
-        f.write(json.JSONEncoder().encode(votes_json))
-    return votes_json
+    return nx.node_link_data(G)
 
 
 def convert_industries_to_graph():
@@ -196,98 +165,76 @@ def convert_industries_to_graph():
             node: keys "name", "group"
             links: keys "source", "target", "value" (value is the percentage source votes the same as target)
     """
-    with open("mdata.json") as f:
-        data = json.load(f)
+    senators = read_money_data()
 
-    with open("senators.json") as f:
-        senators = json.load(f)
+    party_map = {
+        'R': 2,
+        'D': 1,
+        'I': 3
+    }
 
-    money_json = {}
-    adj_matrix = {}
-    senators_map = {}
-    money_json["nodes"] = []
-    money_json["links"] = []
+    G = nx.Graph()
+    for i in range(len(senators)):
+        G.add_node(i, name=senators[i].display_name, group=party_map[senators[i].display_name[-2]])
 
-    democrats = senators["democrats"]
-    republicans = senators["republicans"]
-    other = senators["other"]
-    all_senators = []
-    for i in democrats:
-        all_senators.append(i)
-    for i in republicans:
-        all_senators.append(i)
-    for i in other:
-        all_senators.append(i)
-    for i in range(len(all_senators)):
-        node_dict = {}
-        node_dict["name"] = all_senators[i]
-        if all_senators[i] in democrats:
-            node_dict["group"] = 1
-        elif all_senators[i] in republicans:
-            node_dict["group"] = 2
-        else:
-            node_dict["group"] = 3
-        senators_map[all_senators[i]] = i
-        money_json["nodes"].append(node_dict)
+    for i in range(len(senators)):
+        for j in range(i + 1, len(senators)):
+            sim = senators[i].money_similarity(senators[j])
+            G.add_edge(i, j, value=min(sim, 1))
 
-    industries = data.keys()
-    for industry in industries:
-        senators = data[industry].keys()
-        for senator in senators:
-            if senator not in adj_matrix:
-                adj_matrix[senator] = {}
-            for other_senator in senators:
-                if other_senator not in adj_matrix[senator]:
-                    adj_matrix[senator][other_senator] = 1
-                else:
-                    adj_matrix[senator][other_senator] += 1
+    assert len(G.nodes) == len(senators)
+    for x, y in G.edges:
+        assert x in G.nodes
+        assert y in G.nodes
+    return nx.node_link_data(G)
 
-    for senator in adj_matrix:
-        for other_senator in adj_matrix[senator]:
-            links_dict = {}
-            links_dict["source"] = senators_map[senator]
-            links_dict["target"] = senators_map[other_senator]
-            links_dict["value"] = adj_matrix[senator][other_senator] / adj_matrix[senator][senator]
-            money_json["links"].append(links_dict)
+
+def plot_senators():
+    senators = read_vote_data()
+    senator_names = [senator.display_name for senator in senators]
+    yea_votes = [len(senator.yea_votes) for senator in senators]
+    no_votes = [len(senator.no_votes) for senator in senators]
+    fig, ax = plt.subplots()
+    index = np.arange(len(senator_names))
+    bar_width = 0.35
+    opacity = 0.4
+
+    rects1 = ax.bar(index, yea_votes, bar_width, alpha=opacity, color='b', label='Yea')
+    rects2 = ax.bar(index + bar_width, no_votes, bar_width, alpha=opacity, color='r', label='Nay')
+
+    ax.set_xlabel('Senator')
+    ax.set_ylabel('Number of Votes')
+    ax.set_title('Voting Patterns of Senators')
+    ax.set_xticks(index + bar_width / 2)
+    ax.set_xticklabels(senator_names)
+    ax.legend()
+    plt.show()
+
+
+def plot_industries():
+    plt.rcdefaults()
+    fig, ax = plt.subplots()
+
+    senators = read_money_data()
+    senator_names = [senator.display_name for senator in senators]
+
+    y_pos = np.arange(len(senators))
+    totals = [reduce((lambda x, y: x + y), list(senator.donations.values())) for senator in senators]
+    ax.barh(y_pos, totals)
+    ax.set_yticks(y_pos)
+    ax.set_yticklabels(senator_names)
+    ax.invert_yaxis()
+    ax.set_xlabel('Senator')
+    ax.set_title('Total Contributions Received by Senator')
+    plt.show()
+
+if __name__ == "__main__":
+    votes_json = convert_votes_to_graph()
+    money_json = convert_industries_to_graph()
 
     with open("mgraph.json", "w") as f:
         f.write(json.JSONEncoder().encode(money_json))
-    return money_json
 
+    with open("vgraph.json", "w") as f:
+        f.write(json.JSONEncoder().encode(votes_json))
 
-if __name__ == "__main__":
-    if len(sys.argv) == 1:
-        while True:
-            print("Read (v)ote data")
-            print("Read (i)ndustry data")
-            print("Get vote (a)djacency matrix")
-            print("Get industry a(d)jacency matrix")
-            print("(e)xit")
-            print()
-            choice = input("Enter a command: ")
-            if choice == "e":
-                break
-            elif choice == "v":
-                read_vote_data()
-            elif choice == "i":
-                read_money_data()
-            elif choice == "a":
-                convert_votes_to_graph()
-            elif choice == "d":
-                convert_industries_to_graph()
-            elif choice == "e":
-                break
-            else:
-                print("Invalid command")
-            print()
-    else:
-        if sys.argv[1] == "v":
-            read_vote_data()
-        elif sys.argv[1] == "i":
-            read_money_data()
-        elif sys.argv[1] == "a":
-            convert_votes_to_graph()
-        elif sys.argv[1] == "d":
-            convert_industries_to_graph()
-        else:
-            print("Invalid command")
