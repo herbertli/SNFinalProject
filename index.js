@@ -48,7 +48,7 @@
         .attr("font-size", "12px")
         .style("opacity", 0.5)
         .text("vote the same way x% of the time");
-    d3.json("/vgraph.json", function (error, graph) {
+    d3.json("https://herbertli.github.io/SNFinalProject/vgraph.json", function (error, graph) {
         if (error) throw error;
         graph.links.forEach(function (d, i) {
             d.i = i;
@@ -173,7 +173,7 @@
         .attr("font-size", "12px")
         .style("opacity", 0.5)
         .text("received donations from the same x% of industries");
-    d3.json("/mgraph.json", function (error, graph) {
+    d3.json("https://herbertli.github.io/SNFinalProject/mgraph.json", function (error, graph) {
         if (error) throw error;
         graph.links.forEach(function (d, i) {
             d.i = i;
