@@ -30,9 +30,7 @@ class Senator:
         for vote in self.no_votes:
             if vote in other.no_votes:
                 same += 1
-
         return same / (len(self.yea_votes) + len(self.no_votes) + len(other.yea_votes) + len(other.no_votes) - same)
-        # return same / (len(self.yea_votes) + len(self.no_votes)) ** .5 / (len(other.yea_votes) + len(other.no_votes)) ** .5
 
     def money_similarity(self, other):
         if self.has_outliers:
@@ -58,20 +56,14 @@ class Senator:
         else:
             self.industries[industry_id] += amount
 
-    def remove_outliers(self, m = 2):
+    def remove_outliers(self, m=2):
         data = list(self.industries.values())
         med = np.median(data)
         d = np.abs(data - med)
         mdev = np.median(d)
-        removed = 0
-        for k in self.industries.keys():
-            if mdev:
-                s = self.industries[k] / mdev
-            else:
-                s = 0
-            if s > m and self.industries[k] < med:
-                self.industries.pop(k, None)
-                removed += 1
+        removed_keys = [k for k in self.industries.keys() if self.industries[k] / mdev > m]
+        for k in removed_keys:
+            del self.industries[k]
         self.has_outliers = False
 
 
@@ -143,10 +135,17 @@ def convert_votes_to_graph():
     for i in range(len(senators)):
         G.add_node(i, name=senators[i].display_name, group=party_map[senators[i].party])
 
+    removed = 0
     for i in range(len(senators)):
         for j in range(i + 1, len(senators)):
             sim = senators[i].vote_similarity(senators[j])
-            G.add_edge(i, j, value=min(sim, 1))
+            if sim >= .5:
+                G.add_edge(i, j, value=min(sim, 1))
+            else:
+                removed += 1
+
+    print("Added:", len(G.nodes), "nodes")
+    print("Added:", len(G.edges), "edges, removed", removed)
 
     assert len(G.nodes) == len(senators)
     for x, y in G.edges:
@@ -177,10 +176,17 @@ def convert_industries_to_graph():
     for i in range(len(senators)):
         G.add_node(i, name=senators[i].display_name, group=party_map[senators[i].display_name[-2]])
 
+    removed = 0
     for i in range(len(senators)):
         for j in range(i + 1, len(senators)):
             sim = senators[i].money_similarity(senators[j])
-            G.add_edge(i, j, value=min(sim, 1))
+            if sim >= .5:
+                G.add_edge(i, j, value=min(sim, 1))
+            else:
+                removed += 1
+
+    print("Added:", len(G.nodes), "nodes")
+    print("Added:", len(G.edges), "edges, removed", removed)
 
     assert len(G.nodes) == len(senators)
     for x, y in G.edges:

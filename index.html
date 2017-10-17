@@ -103,7 +103,7 @@
                     <h6 class="card-title">Senators A is connected with Senator B if they vote the same way x% of the
                         time</h6>
                     <p class="card-text">
-                        For this similarity measure, I used cosine similarity, bounded
+                        For this similarity measure, I used Jaccard similarity, with the result bounded
                         in [0, 1]. We count the number of times Senator A votes the same way as Senator B and
                         normalize the result so it is independent of the number of votes either senator participated in.
                         As a detail of the implementation, if both senators abstain for a particular,
@@ -130,7 +130,7 @@
                     <h6 class="card-title">Senators A is connected with Senator B if they received donations from x% of
                         the same industries</h6>
                     <p class="card-text">
-                        For this similarity measure, I again used cosine similarity, bounded
+                        For this similarity measure, I again used cosine similarity, with the result bounded
                         in [0, 1]. We count the number of industries Senator A shares with Senator B and normalize the
                         result so it is independent of the total number of industries that donated to either senator.
                         Furthermore, we remove any lower outliers from each senator because we only really want to
@@ -164,7 +164,7 @@
         integrity="sha384-h0AbiXch4ZDo7tp9hKZ4TsHbi047NrKGLO3SEJAg45jXxnGIfYzk4Si90RDIqNm1"
         crossorigin="anonymous"></script>
 <script src="https://d3js.org/d3.v3.min.js"></script>
-<script src="https://herbertli.github.io/SNFinalProject/index.js"></script>
+<script src="/index.js"></script>
 
 </body>
 

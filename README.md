@@ -20,20 +20,10 @@ x is some threshold value
 - money_data/ - contains donation data for each senator (current congress)
 - vote_data/ - contains voting data for the current congress
 - **get_stats.py** - statistics for the graph
-- **industry.html** - open in a browser to see data visualization of donation network
-- main.js - misc. file for scraping data
+- **index.html** - open in a browser to see data visualization
+- index.js - d3 visualization
 - mgraph.json - graph representation of donation network
-- read_data.py - converts raw data in money_data and vote_data into something nicer
-- senators.json - list of parties and senators
+- **read_data.py** - converts raw data in money_data and vote_data into something nicer
 - vgraph.json - graph representation of network created by voting trends
-- **voting.html** - open in a browser to see data visualization of network created by voting trends
 
 **Bolded** files are probably the more interesting ones to look at
-
-Usage:
-- industry.html/voting.html: open in a browser and play around with it
-- get_stats.py: in a shell
-
-> python3 get_stats.py
-
-To get graph statistics for voting/donation network using a user-specified threshold
