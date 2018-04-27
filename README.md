@@ -1,4 +1,4 @@
-# Final Project for Social Networks (NYU), Herbert Li
+# Final Project for Social Networks (NYU), https://herbertli.github.io/SenateNetwork/
 
 ## Thanks to...
 - OpenSecrets.org and the Center for Responsive Politics (donation data)
